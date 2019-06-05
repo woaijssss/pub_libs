@@ -32,20 +32,20 @@ USE_REDIS=0
 # 普通的编译函数
 function Make()
 {
-	if [ -e ${1}/configure ] ; then
-		chmod 755 ${1}/configure		# configure方式预编译的，确保是可执行的
+	if [ -e $1/configure ] ; then
+		chmod 755 $1/configure		# configure方式预编译的，确保是可执行的
 	fi
 
-	if [ ${1} == ${BOOST} ] ; then
-		cd ${1}
+	if [ $1 == ${BOOST} ] ; then
+		cd $1
 		./bootstrap.sh
 		./b2
 		./b2 install
 		cd -
-	elif [ ${1} == ${JSONCPP} ] ; then
+	elif [ $1 == ${JSONCPP} ] ; then
 		rm -rf ${SCONS}
 		unzip ${SCONS}${ZIP_SUFFIX}
-		cd ${1}
+		cd $1
 		_SCONS="../"${SCONS}/script/scons
 		python ${_SCONS} platform=linux-gcc
 		cp -rP ./include/json /usr/local/include/
@@ -53,7 +53,7 @@ function Make()
 		rm -rf ${SCONS}
 		cd -
 	else
-		cd ${1}
+		cd $1
 		./configure -q		# 禁止输出checking...，只输出警告和错误
 		make BUILD=release
 		make install
@@ -107,7 +107,7 @@ function installDBs()
 		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc3.d/S100redis_start
 		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc4.d/S100redis_start
 		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc5.d/S100redis_start
-		echo "install redis"
+		echo "installed redis"
 	fi
 	
 	if [ ${USE_MYSQL} == 1 ] ; then
@@ -133,6 +133,7 @@ function installDBs()
 			  -DMYSQL_TCP_PORT=3306 \
 			  -DENABLE_DOWNLOADS=1 \
 			  -DWITH_SSL=bundled \
+			  --no-warn-unused-cli \
 			  .. > cmake.log
 		#make BUILD=release
 		#make install
@@ -153,14 +154,14 @@ function installDBs()
 	cd ${ROOT_DIR}
 }
 
-# 运行脚本要带上是否安装数据库标识
-if [ ${#} -lt 2 ] ; then
-	echo "Usage such as: "${0}" 0 0"
+# 运行脚本要带上是否安装数据库标识(Release版需要)
+if [ $# -lt 2 ] ; then
+	echo "Usage such as: "$0" 0 0"
 	exit 0
 fi
 
 NEW_SH="install"
-if [ ${0} == "./build.sh" ] ; then
+if [ $0 == "./build.sh" ] ; then
 	cd apps
 	if [ ! -e "shc-3.8.9b.tgz" ] ; then
 		wget http://www.datsi.fi.upm.es/~frosal/sources/shc-3.8.9b.tgz
@@ -171,20 +172,20 @@ if [ ${0} == "./build.sh" ] ; then
 	cd ${ROOT_DIR}
 
 	# 加密shell脚本
-	shc -rf ${0}
-	mv ${0}".x" ${NEW_SH}
+	shc -rf $0
+	mv $0".x" ${NEW_SH}
 	rm -f build.sh.*
 	
-	./${NEW_SH} ${1} ${2}
+	./${NEW_SH} $1 $2
 	#rm -f $0
 	exit 0
 fi
 
-if [ ${1} -eq 1 ] ; then
+if [ $1 -eq 1 ] ; then
 	USE_REDIS=1
 fi
 
-if [ ${2} -eq 1 ] ; then
+if [ $2 -eq 1 ] ; then
 	USE_MYSQL=1
 fi
 	
