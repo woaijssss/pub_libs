@@ -12,51 +12,53 @@ LOG4CPLUS_VER="2.0.4"
 # 安装log4cplus用
 SCONS_VER="3.0.4"
 REDIS_VER="5.0.0"
+MYSQL_VER="5.5.62"
 
-BOOST="boost_"$BOOST_VER
-CURL="curl-"$CURL_VER
-HIREDIS="hiredis-"$HIREDIS_VER
-JSONCPP="jsoncpp-src-"$JSONCPP_VER
-LOG4CPLUS="log4cplus-"$LOG4CPLUS_VER
-REDIS="redis-"$REDIS_VER
-SCONS="scons-"$SCONS_VER
+BOOST="boost_"${BOOST_VER}
+CURL="curl-"${CURL_VER}
+HIREDIS="hiredis-"${HIREDIS_VER}
+JSONCPP="jsoncpp-src-"${JSONCPP_VER}
+LOG4CPLUS="log4cplus-"${LOG4CPLUS_VER}
+SCONS="scons-"${SCONS_VER}
+REDIS="redis-"${REDIS_VER}
+MYSQL="mysql-"${MYSQL_VER}
 
 #----------------------------------------------------------------------------------------------
 # 标识是否需要安装对应的数据库
-MYSQL=0
-REDIS=0
+USE_MYSQL=0
+USE_REDIS=0
 #----------------------------------------------------------------------------------------------
 
 # 普通的编译函数
 function Make()
 {
-	if [ -e $1/configure ] ; then
-		chmod 755 $1/configure		# configure方式预编译的，确保是可执行的
+	if [ -e ${1}/configure ] ; then
+		chmod 755 ${1}/configure		# configure方式预编译的，确保是可执行的
 	fi
 
-	if [ $1 == $BOOST ] ; then
-		cd $1
+	if [ ${1} == ${BOOST} ] ; then
+		cd ${1}
 		./bootstrap.sh
 		./b2
 		./b2 install
 		cd -
-	elif [ $1 == $JSONCPP ] ; then
-		rm -rf $SCONS
-		unzip $SCONS$ZIP_SUFFIX
-		cd $1
-		_SCONS="../"$SCONS/script/scons
-		python $_SCONS platform=linux-gcc
+	elif [ ${1} == ${JSONCPP} ] ; then
+		rm -rf ${SCONS}
+		unzip ${SCONS}${ZIP_SUFFIX}
+		cd ${1}
+		_SCONS="../"${SCONS}/script/scons
+		python ${_SCONS} platform=linux-gcc
 		cp -rP ./include/json /usr/local/include/
 		cp -rP ./libs/linux-gcc-4.8.5/libjson_linux-gcc-4.8.5_libmt.so /usr/local/lib/libjson.so
-		rm -rf $SCONS
+		rm -rf ${SCONS}
 		cd -
 	else
-		cd $1
+		cd ${1}
 		./configure -q		# 禁止输出checking...，只输出警告和错误
 		make BUILD=release
 		make install
 		cd -
-		#rm -rf $1
+		#rm -rf ${1}
 	fi
 }
 
@@ -64,30 +66,31 @@ function Make()
 function installLibs()
 {
 	cd libs
-	tar -zxf $BOOST$TARGZ_SUFFIX
-	Make $BOOST
-	rm -rf $BOOST
-	tar -zxf $CURL$TARGZ_SUFFIX
-	Make $CURL
-	rm -rf $CURL
-	tar -zxf $HIREDIS$TARGZ_SUFFIX
-	Make $HIREDIS
-	rm -rf $HIREDIS
-	tar -zxvf $JSONCPP$TARGZ_SUFFIX
-	Make $JSONCPP
-	rm -rf $JSONCPP
-	tar -zxf $LOG4CPLUS$TARGZ_SUFFIX
-	Make $LOG4CPLUS
-	rm -rf $LOG4CPLUS
-	cd $ROOT_DIR
+	tar -zxf ${BOOST}${TARGZ_SUFFIX}
+	Make ${BOOST}
+	rm -rf ${BOOST}
+	tar -zxf ${CURL}${TARGZ_SUFFIX}
+	Make ${CURL}
+	rm -rf ${CURL}
+	tar -zxf ${HIREDIS}${TARGZ_SUFFIX}
+	Make ${HIREDIS}
+	rm -rf ${HIREDIS}
+	tar -zxvf ${JSONCPP}${TARGZ_SUFFIX}
+	Make ${JSONCPP}
+	rm -rf ${JSONCPP}
+	tar -zxf ${LOG4CPLUS}${TARGZ_SUFFIX}
+	Make ${LOG4CPLUS}
+	rm -rf ${LOG4CPLUS}
+	cd ${ROOT_DIR}
 }
 
 # 安装数据库
 function installDBs()
 {
 	cd databases
-	if [ ${REDIS} == 1 ] ; then
+	if [ ${USE_REDIS} == 1 ] ; then
 		# 安装redis
+		echo "Installing redis service..."
 		#wget http://download.redis.io/releases/${REDIS}${TARGZ_SUFFIX}
 		#tar -zxvf ${REDIS}${TARGZ_SUFFIX}
 		#cd ${REDIS}
@@ -107,32 +110,57 @@ function installDBs()
 		echo "install redis"
 	fi
 	
-	if [ ${MYSQL} == 1 ] ; then
+	if [ ${USE_MYSQL} == 1 ] ; then
 		# 安装mysql
-		#wget http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm
-		#rpm -ivh mysql-community-release-el7-5.noarch.rpm
-		#yum update -y
-		#yum install -y mysql-server
-		#chown mysql:mysql -R /var/lib/mysql	# 这个好像有问题
-		#chown mysql.mysql /var/run/mysqld/
-		#mysqld --initialize
-		#systemctl start mysqld
-		#sleep 1
-		#systemctl status mysqld
-		echo "install mysql"
+		echo "Installing mysql service..."
+		tar -zxf ${MYSQL}${TARGZ_SUFFIX}
+		cd ${MYSQL}
+		mkdir -p build
+		cd build
+		cmake -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
+			  -DDEFAULT_CHARSET=utf8 \
+			  -DDEFAULT_COLLATION=utf8_general_ci \
+			  -DWITH_EXTRA_CHARSETS=all \
+			  -DSYSCONFDIR=/etc \
+			  -DMYSQL_DATADIR=/home/mysql/ \
+			  -DMYSQL_UNIX_ADDR=/home/mysql/mysql.sock \
+			  -DWITH_MYISAM_STORAGE_ENGINE=1 \
+			  -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+			  -DWITH_ARCHIVE_STORAGE_ENGINE=1 \
+			  -DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+			  -DENABLED_LOCAL_INFILE=1 \
+			  -DWITH_SSL=system \
+			  -DMYSQL_TCP_PORT=3306 \
+			  -DENABLE_DOWNLOADS=1 \
+			  -DWITH_SSL=bundled \
+			  .. > cmake.log
+		#make BUILD=release
+		#make install
+		#cp support-files/my-medium.cnf /etc/my.cnf 
+		#/usr/local/mysql/scripts/mysql_install_db --user=mysql --ldata=/var/lib/mysql --basedir=/usr/local/mysql --datadir=/home/mysql 
+		##echo "PATH=$PATH:/usr/local/mysql/bin/" >> /etc/profile 
+		##source /etc/profile
+		#cp support-files/mysql.server /etc/init.d/mysqld
+		#chmod +x /etc/init.d/mysqld    # 设置执行权限
+		#chkconfig --add mysqld         # 添加mysqld服务
+		#chkconfig --level 35 mysqld on
+		#service mysqld start
+		cd ../../
+		rm -rf ${MYSQL}
+		echo "installed mysql!"
 	fi
 	
-	cd $ROOT_DIR
+	cd ${ROOT_DIR}
 }
 
-
-if [ $# -lt 2 ] ; then
-	echo "Usage such as: ./build.sh 0 0"
+# 运行脚本要带上是否安装数据库标识
+if [ ${#} -lt 2 ] ; then
+	echo "Usage such as: "${0}" 0 0"
 	exit 0
 fi
 
 NEW_SH="install"
-if [ $0 == "./build.sh" ] ; then
+if [ ${0} == "./build.sh" ] ; then
 	cd apps
 	if [ ! -e "shc-3.8.9b.tgz" ] ; then
 		wget http://www.datsi.fi.upm.es/~frosal/sources/shc-3.8.9b.tgz
@@ -140,25 +168,24 @@ if [ $0 == "./build.sh" ] ; then
 		cd shc-3.8.9b
 		make
 	fi
-	cd $ROOT_DIR
+	cd ${ROOT_DIR}
 
 	# 加密shell脚本
-	shc -rf $0
-	mv $0".x" $NEW_SH
-	rm -f build.sh.x.c
-	#rm -f build*
+	shc -rf ${0}
+	mv ${0}".x" ${NEW_SH}
+	rm -f build.sh.*
 	
-	./$NEW_SH $1 $2
+	./${NEW_SH} ${1} ${2}
 	#rm -f $0
 	exit 0
 fi
 
-if [ $1 -eq 1 ] ; then
-	REDIS=1
+if [ ${1} -eq 1 ] ; then
+	USE_REDIS=1
 fi
 
-if [ $2 -eq 1 ] ; then
-	MYSQL=1
+if [ ${2} -eq 1 ] ; then
+	USE_MYSQL=1
 fi
 	
 #installLibs
