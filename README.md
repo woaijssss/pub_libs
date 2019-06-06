@@ -13,3 +13,8 @@
 	mysql
 	redis
 ```
+
+- 应用包
+```
+	nginx
+```
