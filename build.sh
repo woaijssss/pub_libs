@@ -11,8 +11,13 @@ JSONCPP_VER="0.5.0"
 LOG4CPLUS_VER="2.0.4"
 # 安装log4cplus用
 SCONS_VER="3.0.4"
+
+#------databases
 REDIS_VER="5.0.0"
 MYSQL_VER="5.5.62"
+
+#------apps
+NGINX_VER="1.10.3"
 
 BOOST="boost_"${BOOST_VER}
 CURL="curl-"${CURL_VER}
@@ -24,9 +29,13 @@ REDIS="redis-"${REDIS_VER}
 MYSQL="mysql-"${MYSQL_VER}
 
 #----------------------------------------------------------------------------------------------
-# 标识是否需要安装对应的数据库
+# 标识是否需要安装相应的服务
+#------databases
 USE_MYSQL=0
 USE_REDIS=0
+
+#------apps
+USE_NGINX=0
 #----------------------------------------------------------------------------------------------
 
 # 普通的编译函数
@@ -154,9 +163,28 @@ function installDBs()
 	cd ${ROOT_DIR}
 }
 
+function installApps()
+{
+	cd apps
+	if [ ${USE_NGINX} == 1 ] ; then
+		tar -zxf nginx-${NGINX_VER}${TARGZ_SUFFIX}
+		cd nginx-${NGINX_VER}
+		
+		# configure的参数可以自由改动
+		./configure --with-stream
+		make BUILD=release
+		make install
+		cd ..
+		rm -rf nginx-${NGINX_VER}
+		ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
+	fi
+
+	cd ${ROOT_DIR}
+}
+
 # 运行脚本要带上是否安装数据库标识(Release版需要)
-if [ $# -lt 2 ] ; then
-	echo "Usage such as: "$0" 0 0"
+if [ $# -lt 3 ] ; then
+	echo "Usage such as: "$0" 0 0 0"
 	exit 0
 fi
 
@@ -176,7 +204,7 @@ if [ $0 == "./build.sh" ] ; then
 	mv $0".x" ${NEW_SH}
 	rm -f build.sh.*
 	
-	./${NEW_SH} $1 $2
+	./${NEW_SH} $1 $2 $3
 	#rm -f $0
 	exit 0
 fi
@@ -188,9 +216,14 @@ fi
 if [ $2 -eq 1 ] ; then
 	USE_MYSQL=1
 fi
+
+if [ $3 -eq 1 ] ; then
+	USE_NGINX=1
+fi
 	
 #installLibs
-installDBs
+#installDBs
+installApps
 
 
 
