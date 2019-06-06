@@ -171,12 +171,13 @@ function installApps()
 		cd nginx-${NGINX_VER}
 		
 		# configure的参数可以自由改动
-		./configure --with-stream
-		make BUILD=release
-		make install
+		#./configure --with-stream
+		#make BUILD=release
+		#make install
 		cd ..
 		rm -rf nginx-${NGINX_VER}
 		ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
+		cp -r ../config/nginx/nginx.conf /usr/local/nginx/conf
 	fi
 
 	cd ${ROOT_DIR}
