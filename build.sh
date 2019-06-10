@@ -1,9 +1,12 @@
 #!/bin/bash
 
 ROOT_DIR=$(pwd)
+
+#----------------------------后缀名
 TARGZ_SUFFIX=".tar.gz"
 ZIP_SUFFIX=".zip"
 
+#----------------------------开源库版本号 libs
 BOOST_VER="1_58_0"
 CURL_VER="7.26.0"
 HIREDIS_VER="0.14.0"
@@ -12,11 +15,11 @@ LOG4CPLUS_VER="2.0.4"
 # 安装log4cplus用
 SCONS_VER="3.0.4"
 
-#------databases
+#----------------------------数据库 databases
 REDIS_VER="5.0.0"
 MYSQL_VER="5.5.62"
 
-#------apps
+#----------------------------应用	apps
 NGINX_VER="1.10.3"
 
 BOOST="boost_"${BOOST_VER}
@@ -41,56 +44,41 @@ USE_NGINX=0
 # 普通的编译函数
 function Make()
 {
-	if [ -e $1/configure ] ; then
-		chmod 755 $1/configure		# configure方式预编译的，确保是可执行的
+	tar -zxf $1${TARGZ_SUFFIX}
+	cd $1
+	
+	if [ -e configure ] ; then
+		chmod 755 configure		# configure方式预编译的，确保是可执行的
 	fi
 
 	if [ $1 == ${BOOST} ] ; then
-		cd $1
 		./bootstrap.sh
 		./b2
 		./b2 install
-		cd -
 	elif [ $1 == ${JSONCPP} ] ; then
-		rm -rf ${SCONS}
-		unzip ${SCONS}${ZIP_SUFFIX}
-		cd $1
-		_SCONS="../"${SCONS}/script/scons
-		python ${_SCONS} platform=linux-gcc
+		unzip -o ../${SCONS}${ZIP_SUFFIX}
+		python ${SCONS}/script/scons platform=linux-gcc
 		cp -rP ./include/json /usr/local/include/
 		cp -rP ./libs/linux-gcc-4.8.5/libjson_linux-gcc-4.8.5_libmt.so /usr/local/lib/libjson.so
-		rm -rf ${SCONS}
-		cd -
+		
 	else
-		cd $1
 		./configure -q		# 禁止输出checking...，只输出警告和错误
 		make BUILD=release
 		make install
-		cd -
-		#rm -rf ${1}
 	fi
+	
+	cd ..
+	rm -rf $1
 }
 
 # 安装第三方开源库
 function installLibs()
 {
 	cd libs
-	tar -zxf ${BOOST}${TARGZ_SUFFIX}
-	Make ${BOOST}
-	rm -rf ${BOOST}
-	tar -zxf ${CURL}${TARGZ_SUFFIX}
-	Make ${CURL}
-	rm -rf ${CURL}
-	tar -zxf ${HIREDIS}${TARGZ_SUFFIX}
-	Make ${HIREDIS}
-	rm -rf ${HIREDIS}
-	tar -zxvf ${JSONCPP}${TARGZ_SUFFIX}
+	#Make ${CURL}
+	#Make ${HIREDIS}
 	Make ${JSONCPP}
-	rm -rf ${JSONCPP}
-	tar -zxf ${LOG4CPLUS}${TARGZ_SUFFIX}
-	Make ${LOG4CPLUS}
-	rm -rf ${LOG4CPLUS}
-	cd ${ROOT_DIR}
+	#Make ${LOG4CPLUS}
 }
 
 # 安装数据库
@@ -100,23 +88,30 @@ function installDBs()
 	if [ ${USE_REDIS} == 1 ] ; then
 		# 安装redis
 		echo "Installing redis service..."
-		#wget http://download.redis.io/releases/${REDIS}${TARGZ_SUFFIX}
-		#tar -zxvf ${REDIS}${TARGZ_SUFFIX}
-		#cd ${REDIS}
-		#make BUILD=release
-		#mkdir /usr/redis  
-		#cp src/redis-server /usr/redis  
-		#cp src/redis-benchmark /usr/redis  
-		#cp src/redis-cli /usr/redis  
-		#cp redis.conf /usr/redis  
+		if [ ! -e ${REDIS}${TARGZ_SUFFIX} ] ; then
+			wget http://download.redis.io/releases/${REDIS}${TARGZ_SUFFIX}
+		fi
+		tar -zxf ${REDIS}${TARGZ_SUFFIX}
+		cd ${REDIS}
+		make BUILD=release
+		make install
 		
-		#echo "/usr/redis/redis-server /usr/redis/redis.conf &" > /etc/init.d/redis_start.sh
-		#chmod 755 /etc/init.d/redis_start.sh
-		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc2.d/S100redis_start
-		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc3.d/S100redis_start
-		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc4.d/S100redis_start
-		#ln -sf /etc/init.d/redis_start.sh /etc/rc.d/rc5.d/S100redis_start
-		echo "installed redis"
+		cp utils/redis_init_script /etc/rc.d/init.d/redisd
+		chkconfig --add redisd
+		mkdir -p /etc/redis
+		cp redis.conf /etc/redis/6379.conf
+		systemctl enable redisd
+		
+		count=$(ps -ef | grep redis | wc -l)
+		if [ $count -le 1 ] ; then
+			systemctl start redisd
+		else
+			systemctl restart redisd
+		fi
+		
+		cd ..
+		rm -rf ${REDIS}
+		echo -e "installed redis"
 	fi
 	
 	if [ ${USE_MYSQL} == 1 ] ; then
@@ -144,17 +139,29 @@ function installDBs()
 			  -DWITH_SSL=bundled \
 			  --no-warn-unused-cli \
 			  .. > cmake.log
-		#make BUILD=release
-		#make install
-		#cp support-files/my-medium.cnf /etc/my.cnf 
-		#/usr/local/mysql/scripts/mysql_install_db --user=mysql --ldata=/var/lib/mysql --basedir=/usr/local/mysql --datadir=/home/mysql 
-		##echo "PATH=$PATH:/usr/local/mysql/bin/" >> /etc/profile 
-		##source /etc/profile
-		#cp support-files/mysql.server /etc/init.d/mysqld
-		#chmod +x /etc/init.d/mysqld    # 设置执行权限
-		#chkconfig --add mysqld         # 添加mysqld服务
-		#chkconfig --level 35 mysqld on
-		#service mysqld start
+		make BUILD=release
+		make install
+		
+		cp support-files/my-medium.cnf /etc/my.cnf 
+		/usr/local/mysql/scripts/mysql_install_db --user=mysql --ldata=/var/lib/mysql --basedir=/usr/local/mysql --datadir=/home/mysql 
+		count=$(grep '/usr/local/mysql/bin' /etc/rc.local | wc -l)
+		if [ $count -lt 1 ] ; then
+			echo "PATH=$PATH:/usr/local/mysql/bin/" >> /etc/profile 
+			source /etc/profile
+		fi
+		
+		cp support-files/mysql.server /etc/init.d/mysqld
+		chmod +x /etc/init.d/mysqld    # 设置执行权限
+		chkconfig --add mysqld         # 添加mysqld服务
+		chkconfig --level 35 mysqld on
+		
+		count=$(ps -ef | grep mysqld | wc -l)
+		if [ $count -le 1 ] ; then
+			systemctl start mysqld
+		else
+			systemctl restart mysqld
+		fi
+		
 		cd ../../
 		rm -rf ${MYSQL}
 		echo "installed mysql!"
@@ -171,9 +178,9 @@ function installApps()
 		cd nginx-${NGINX_VER}
 		
 		# configure的参数可以自由改动
-		#./configure --with-stream
-		#make BUILD=release
-		#make install
+		./configure --with-stream
+		make BUILD=release
+		make install
 		cd ..
 		rm -rf nginx-${NGINX_VER}
 		ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
@@ -194,10 +201,15 @@ if [ $0 == "./build.sh" ] ; then
 	cd apps
 	if [ ! -e "shc-3.8.9b.tgz" ] ; then
 		wget http://www.datsi.fi.upm.es/~frosal/sources/shc-3.8.9b.tgz
-		tar -zxf shc-3.8.9b.tgz
-		cd shc-3.8.9b
-		make
 	fi
+	
+	tar -zxf shc-3.8.9b.tgz
+	cd shc-3.8.9b
+	make
+	make install
+	cd ..
+	rm -rf shc-3.8.9b
+	
 	cd ${ROOT_DIR}
 
 	# 加密shell脚本
@@ -222,9 +234,9 @@ if [ $3 -eq 1 ] ; then
 	USE_NGINX=1
 fi
 	
-#installLibs
+installLibs
 #installDBs
-installApps
+#installApps
 
 
 
