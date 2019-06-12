@@ -185,6 +185,14 @@ function installApps()
 		rm -rf nginx-${NGINX_VER}
 		ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
 		cp -r ../config/nginx/nginx.conf /usr/local/nginx/conf
+		
+		count=$(ps -ef | grep nginx | wc -l)
+		if [ $count -le 1 ] ; then
+			nginx
+		else
+			nginx -s reload
+		fi
+		
 	fi
 
 	cd ${ROOT_DIR}
@@ -192,7 +200,15 @@ function installApps()
 
 # 运行脚本要带上是否安装数据库标识(Release版需要)
 if [ $# -lt 3 ] ; then
-	echo "Usage such as: "$0" 0 0 0"
+	echo "******************************************************************************************"
+	printf "*%20s%s%s%26s\n" "Usage like this: " $0 " redis_flag mysql_flag nginx_flag" "*"
+	printf "*%20s%s%s%53s\n" "Such as: " $0 " 0 0 0" "*"
+	printf "*%75s%14s\n" "All this flags indicate whether you install the corresponding target!" "*"
+	printf "*%15s%74s\n" "<note>:" "*"
+	printf "*%15s%s%59s\n" "1:" " install target" "*"
+	printf "*%15s%s%62s\n" "0:" " not install" "*"
+	echo "******************************************************************************************"
+	
 	exit 0
 fi
 
@@ -234,9 +250,9 @@ if [ $3 -eq 1 ] ; then
 	USE_NGINX=1
 fi
 	
-installLibs
+#installLibs
 #installDBs
-#installApps
+installApps
 
 
 
