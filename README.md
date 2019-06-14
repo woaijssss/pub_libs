@@ -1,6 +1,6 @@
 # pub_libs
-## 说明
-- 此为公共第三方库、常用数据库和一些app应用的部署程序
+## Description
+- This is a public third-party library, a common database, and some application deployment programs.
 ```
 	boost-1.58
 	curl-7.26
@@ -9,17 +9,17 @@
 	log4cplus-2.0.4
 ```
 
-- 数据库：
+- databases：
 ```
 	mysql
 	redis
 ```
 
-- 应用包
+- apps
 ```
 	nginx
 ```
-- 测试过的环境：
+- Tested environment：
 ```
 	centos6.5
 	centos7.3
@@ -27,12 +27,12 @@
 	ubuntu16.04
 	LinuxMint18.2
 ```
-## 使用方法
-- 将代码克隆到本地：
+## Instructions
+- Clone the code to the local：
 ```
 	git clone https://github.com/woaijssss/pub_libs.git
 ```
-- 进入目录，并执行脚本：
+- Enter the directory and execute the .sh script：
 ```
 ******************************************************************************************
 *   Usage like this: ./build.sh redis_flag mysql_flag nginx_flag                         *
